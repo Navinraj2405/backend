@@ -6,7 +6,10 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 
 const app = express();
-app.use(cors());
+ app.use(cors({
+  origin: "*", // allow all origins for testing
+}));
+
 app.use(express.json()); // Parse JSON bodies
 
 // In-memory user storage
