@@ -1,61 +1,71 @@
  const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
-
 const app = express();
 
-// Enable CORS for all origins (for testing)
-app.use(cors({ origin: "*" }));
+app.use(cors());
 app.use(express.json());
 
-// In-memory user storage
+// In-memory user store (resets on server restart)
 const users = [];
 
-// Register endpoint
+// Register route
 app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Username and password required" });
+    if (!username || !password)
+      return res
+        .status(400)
+        .json({ success: false, message: "Username and password required" });
+
+    const exists = users.find((u) => u.username === username);
+    if (exists)
+      return res
+        .status(400)
+        .json({ success: false, message: "Username already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    users.push({ username, password: hashedPassword });
+
+    console.log("User registered:", username);
+    res.json({ success: true, message: "User registered successfully" });
+  } catch (err) {
+    console.error("Register error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
-
-  const exists = users.find((u) => u.username === username);
-  if (exists) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Username already exists" });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-  users.push({ username, password: hashedPassword });
-
-  res.json({ success: true, message: "User registered successfully" });
 });
 
-// Login endpoint
+// Login route
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Username and password required" });
-  }
+    if (!username || !password)
+      return res
+        .status(400)
+        .json({ success: false, message: "Username and password required" });
 
-  const user = users.find((u) => u.username === username);
-  if (!user)
-    return res.json({ success: false, message: "Invalid username or password" });
+    const user = users.find((u) => u.username === username);
+    if (!user)
+      return res.json({ success: false, message: "Invalid username or password" });
 
-  const match = await bcrypt.compare(password, user.password);
-  if (match) {
-    return res.json({ success: true, message: "Login successful" });
-  } else {
-    return res.json({ success: false, message: "Invalid username or password" });
+    const match = await bcrypt.compare(password, user.password);
+    if (match) {
+      return res.json({ success: true, message: "Login successful" });
+    } else {
+      return res.json({ success: false, message: "Invalid username or password" });
+    }
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
-// Use Render's port or fallback to 5000
+// Default route to test server
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
